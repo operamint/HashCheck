@@ -16,6 +16,20 @@
 #include <ppl.h>
 #endif
 
+#include "sip_hash.h"
+
+extern "C" {
+	void WHAPI WHInitSIPHASH(PWHCTXSIPHASH pContext) {
+		pContext->state = 0;
+	}
+	void WHAPI WHUpdateSIPHASH(PWHCTXSIPHASH pContext, PCBYTE pbIn, UINT cbIn) {
+		static const UINT64 refKey[2] = { 0x0706050403020100, 0x0f0e0d0c0b0a0908 };
+		pContext->state = freewayhash::SipHash(refKey, pbIn, cbIn);
+	}
+	void WHAPI WHFinishSIPHASH(PWHCTXSIPHASH pContext) {}
+}
+
+
 // Macro to populate the extensions table. E.g. HASH_EXT_MD5,
 #define HASH_EXT_op(alg) HASH_EXT_##alg,
 

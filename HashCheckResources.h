@@ -56,12 +56,15 @@
 #define IDC_OPT_CHK                     509
 #define IDC_OPT_CHK_CRC32               510
 #define IDC_OPT_CHK_MD5                 511
-#define IDC_OPT_CHK_SHA1                512
-#define IDC_OPT_CHK_SHA256              513
-#define IDC_OPT_CHK_SHA512              514
-#define IDC_OPT_CHK_SHA3_256            515
-#define IDC_OPT_CHK_SHA3_512            516
-#define IDC_OPT_FONT                    517
-#define IDC_OPT_FONT_CHANGE             518
-#define IDC_OPT_FONT_PREVIEW            519
-#define IDC_OPT_LINK                    520
+#define IDC_OPT_CHK_SIPHASH             512
+#define IDC_OPT_CHK_SHA1                513
+#define IDC_OPT_CHK_SHA256              514
+#define IDC_OPT_CHK_SHA512              515
+#define IDC_OPT_CHK_SHA3_256            516
+#define IDC_OPT_CHK_SHA3_512            517
+#define IDC_OPT_FONT                    518
+#define IDC_OPT_FONT_CHANGE             519
+#define IDC_OPT_FONT_PREVIEW            520
+#define IDC_OPT_LINK                    521
+
+
