@@ -18,15 +18,23 @@
 
 #include "sip_hash.h"
 
+struct SipState {
+    freewayhash::SipHashState<> hasher;
+};
+
 extern "C" {
 	void WHAPI WHInitSIPHASH(PWHCTXSIPHASH pContext) {
-		pContext->state = 0;
+        static const UINT64 refKey[2] = { 0x0706050403020100, 0x0f0e0d0c0b0a0908 };
+        pContext->state = new SipState{ freewayhash::SipHashState<>(refKey) };
+		pContext->hash = 0;
 	}
 	void WHAPI WHUpdateSIPHASH(PWHCTXSIPHASH pContext, PCBYTE pbIn, UINT cbIn) {
-		static const UINT64 refKey[2] = { 0x0706050403020100, 0x0f0e0d0c0b0a0908 };
-		pContext->state = freewayhash::SipHash(refKey, pbIn, cbIn);
+		pContext->state->hasher.Update(pbIn, cbIn);
 	}
-	void WHAPI WHFinishSIPHASH(PWHCTXSIPHASH pContext) {}
+	void WHAPI WHFinishSIPHASH(PWHCTXSIPHASH pContext) {
+        pContext->hash = pContext->state->hasher.Finalize();
+        delete pContext->state;
+    }
 }
 
 

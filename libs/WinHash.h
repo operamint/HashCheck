@@ -111,7 +111,7 @@ enum hash_algorithm {
 // The digest lengths of the hash algorithms
 #define CRC32_DIGEST_LENGTH         4
 #define MD5_DIGEST_LENGTH           16
-#define SIPHASH_DIGEST_LENGTH       16
+#define SIPHASH_DIGEST_LENGTH       8
 #define SHA1_DIGEST_LENGTH          20
 #define SHA224_DIGEST_LENGTH        28
 #define SHA256_DIGEST_LENGTH        32
@@ -280,9 +280,12 @@ __inline void WHAPI WHFinishCRC32( PWHCTXCRC32 pContext )
 
 /**/
 
-typedef union {
-	UINT64 state;
-	BYTE result[SIPHASH_DIGEST_LENGTH];
+typedef struct {
+    struct SipState* state;
+    union {
+        UINT64 hash;
+        BYTE result[SIPHASH_DIGEST_LENGTH];
+    };
 } WHCTXSIPHASH, *PWHCTXSIPHASH;
 
 
