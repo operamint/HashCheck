@@ -6,7 +6,7 @@
 Unicode true
 
 Name "HashCheck"
-OutFile "HashCheckSetup-v2.4.0.exe"
+OutFile "HashCheckSetup-v2.4.1.exe"
 
 RequestExecutionLevel admin
 ManifestSupportedOS all
@@ -24,7 +24,7 @@ ManifestSupportedOS all
 ;
 Function change_license_font
     FindWindow $0 "#32770" "" $HWNDPARENT
-    CreateFont $1 "Lucida Console" "7"
+    CreateFont $1 "Segoeui" "7"
     GetDlgItem $0 $0 1000
     SendMessage $0 ${WM_SETFONT} $1 1
 FunctionEnd
@@ -53,13 +53,13 @@ FunctionEnd
 !insertmacro MUI_LANGUAGE "Ukrainian"
 !insertmacro MUI_LANGUAGE "Catalan"
 
-VIProductVersion "2.4.0.55"
+VIProductVersion "2.4.1.0"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "HashCheck Shell Extension"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductVersion" "2.4.0.55"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductVersion" "2.4.1."
 VIAddVersionKey /LANG=${LANG_ENGLISH} "Comments" "Installer distributed from https://github.com/gurnec/HashCheck/releases"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "Copyright © 2008-2016 Kai Liu, Christopher Gurnee, Tim Schlueter, et al. All rights reserved."
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "Installer (x86/x64) from https://github.com/gurnec/HashCheck/releases"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "2.4.0.55"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "2.4.1.0"
 
 ; With solid compression, files that are required before the
 ; actual installation should be stored first in the data block,
@@ -94,18 +94,11 @@ Section
         Delete /REBOOTOK $SYSDIR\ShellExt\HashCheck.dll.7
         Delete /REBOOTOK $SYSDIR\ShellExt\HashCheck.dll.8
         Delete /REBOOTOK $SYSDIR\ShellExt\HashCheck.dll.9
-
-        ${EnableX64FSRedirection}
-
-        ; Install the 32-bit dll (the 64-bit dll handles uninstallation for both)
-        File /oname=$0 ..\Bin\Win32\Release\HashCheck.dll
-        ExecWait 'regsvr32 /i:"NoUninstall" /n /s "$0"'
-        IfErrors abort_on_error
     ${Else}
-        ; Install the 32-bit dll
-        File /oname=$0 ..\Bin\Win32\Release\HashCheck.dll
-        ExecWait 'regsvr32 /i /n /s "$0"'
-        IfErrors abort_on_error	
+        Delete $0
+        IfSilent +2
+        MessageBox MB_ICONSTOP|MB_OK "64 bit OS required."
+        Quit
     ${EndIf}
 
     Delete $0

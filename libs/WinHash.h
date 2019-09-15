@@ -19,6 +19,8 @@ extern "C" {
 #include <windows.h>
 #include <tchar.h>
 #include "sha3/KeccakHash.h"
+#include "xxhash/xxhash.h"
+#include "siphash.h"
 #include "BitwiseIntrinsics.h"
 
 #if _MSC_VER >= 1600 && !defined(NO_PPL)
@@ -42,7 +44,8 @@ typedef CONST BYTE *PCBYTE;
  */
 #define FOR_EACH_HASH(op)   op(CRC32)   \
                             op(MD5)     \
-                            op(SIPHASH) \
+                            op(XXHASH)  \
+                            op(SIPH24)  \
                             op(SHA1)    \
                             op(SHA256)  \
                             op(SHA512)  \
@@ -56,7 +59,8 @@ typedef CONST BYTE *PCBYTE;
                             op(SHA1)    \
                             op(CRC32)   \
                             op(MD5)     \
-                            op(SIPHASH)
+                            op(SIPH24)  \
+                            op(XXHASH)
 
 /**
  * Some constants related to the hash algorithms
@@ -66,7 +70,8 @@ typedef CONST BYTE *PCBYTE;
 enum hash_algorithm {
     CRC32 = 1,
     MD5,
-    SIPHASH,
+    XXHASH,
+    SIPH24,
     SHA1,
     SHA256,
     SHA512,
@@ -84,7 +89,8 @@ enum hash_algorithm {
 // Bitwise representation of the hash algorithms
 #define WHEX_CHECKCRC32     (1UL << (CRC32  - 1))
 #define WHEX_CHECKMD5       (1UL << (MD5    - 1))
-#define WHEX_CHECKSIPHASH   (1UL << (SIPHASH - 1))
+#define WHEX_CHECKXXHASH    (1UL << (XXHASH - 1))
+#define WHEX_CHECKSIPH24    (1UL << (SIPH24 - 1))
 #define WHEX_CHECKSHA1      (1UL << (SHA1   - 1))
 #define WHEX_CHECKSHA256    (1UL << (SHA256 - 1))
 #define WHEX_CHECKSHA512    (1UL << (SHA512 - 1))
@@ -95,7 +101,7 @@ enum hash_algorithm {
 // Bitwise representation of the hash algorithms, by digest length (in bits)
 #define WHEX_ALL            ((1UL << NUM_HASHES) - 1)
 #define WHEX_ALL32          WHEX_CHECKCRC32
-#define WHEX_ALL128         (WHEX_CHECKMD5 | WHEX_CHECKSIPHASH)
+#define WHEX_ALL128         (WHEX_CHECKMD5 | WHEX_CHECKXXHASH | WHEX_CHECKSIPH24)
 #define WHEX_ALL160         WHEX_CHECKSHA1
 #define WHEX_ALL256         (WHEX_CHECKSHA256 | WHEX_CHECKSHA3_256)
 #define WHEX_ALL512         (WHEX_CHECKSHA512 | WHEX_CHECKSHA3_512)
@@ -111,7 +117,8 @@ enum hash_algorithm {
 // The digest lengths of the hash algorithms
 #define CRC32_DIGEST_LENGTH         4
 #define MD5_DIGEST_LENGTH           16
-#define SIPHASH_DIGEST_LENGTH       8
+#define XXHASH_DIGEST_LENGTH         8
+#define SIPH24_DIGEST_LENGTH         8
 #define SHA1_DIGEST_LENGTH          20
 #define SHA224_DIGEST_LENGTH        28
 #define SHA256_DIGEST_LENGTH        32
@@ -124,7 +131,8 @@ enum hash_algorithm {
 // The minimum string length required to hold the hex digest strings
 #define CRC32_DIGEST_STRING_LENGTH  (CRC32_DIGEST_LENGTH  * 2 + 1)
 #define MD5_DIGEST_STRING_LENGTH    (MD5_DIGEST_LENGTH    * 2 + 1)
-#define SIPHASH_DIGEST_STRING_LENGTH (SIPHASH_DIGEST_LENGTH * 2 + 1)
+#define XXHASH_DIGEST_STRING_LENGTH (XXHASH_DIGEST_LENGTH * 2 + 1)
+#define SIPH24_DIGEST_STRING_LENGTH (SIPH24_DIGEST_LENGTH * 2 + 1)
 #define SHA1_DIGEST_STRING_LENGTH   (SHA1_DIGEST_LENGTH   * 2 + 1)
 #define SHA224_DIGEST_STRING_LENGTH (SHA224_DIGEST_LENGTH * 2 + 1)
 #define SHA256_DIGEST_STRING_LENGTH (SHA256_DIGEST_LENGTH * 2 + 1)
@@ -137,7 +145,8 @@ enum hash_algorithm {
 // Hash file extensions
 #define HASH_EXT_CRC32          _T(".sfv")
 #define HASH_EXT_MD5            _T(".md5")
-#define HASH_EXT_SIPHASH        _T(".siphash")
+#define HASH_EXT_XXHASH         _T(".xxh64")
+#define HASH_EXT_SIPH24         _T(".siph24")
 #define HASH_EXT_SHA1           _T(".sha1")
 #define HASH_EXT_SHA256         _T(".sha256")
 #define HASH_EXT_SHA512         _T(".sha512")
@@ -150,7 +159,8 @@ extern LPCTSTR g_szHashExtsTab[NUM_HASHES + 1];
 // Hash names
 #define HASH_NAME_CRC32         _T("CRC-32")
 #define HASH_NAME_MD5           _T("MD5")
-#define HASH_NAME_SIPHASH       _T("SIPHASH")
+#define HASH_NAME_XXHASH        _T("XXH64")
+#define HASH_NAME_SIPH24        _T("SIPH24")
 #define HASH_NAME_SHA1          _T("SHA-1")
 #define HASH_NAME_SHA256        _T("SHA-256")
 #define HASH_NAME_SHA512        _T("SHA-512")
@@ -160,7 +170,8 @@ extern LPCTSTR g_szHashExtsTab[NUM_HASHES + 1];
 // Right-justified Hash names
 #define HASH_RNAME_CRC32        _T("  CRC-32")
 #define HASH_RNAME_MD5          _T("     MD5")
-#define HASH_RNAME_SIPHASH      _T(" SIPHASH")
+#define HASH_RNAME_XXHASH       _T("   XXH64")
+#define HASH_RNAME_SIPH24       _T("  SIPH24")
 #define HASH_RNAME_SHA1         _T("   SHA-1")
 #define HASH_RNAME_SHA256       _T(" SHA-256")
 #define HASH_RNAME_SHA512       _T(" SHA-512")
@@ -281,17 +292,48 @@ __inline void WHAPI WHFinishCRC32( PWHCTXCRC32 pContext )
 /**/
 
 typedef struct {
-    struct SipState* state;
+    SipHashState state;
     union {
-        UINT64 hash;
-        BYTE result[SIPHASH_DIGEST_LENGTH];
+        SH_U64 hash;
+        BYTE result[SIPH24_DIGEST_LENGTH];
     };
-} WHCTXSIPHASH, *PWHCTXSIPHASH;
+} WHCTXSIPH24, *PWHCTXSIPH24;
 
 
-void WHAPI WHInitSIPHASH(PWHCTXSIPHASH pContext);
-void WHAPI WHUpdateSIPHASH(PWHCTXSIPHASH pContext, PCBYTE pbIn, UINT cbIn);
-void WHAPI WHFinishSIPHASH(PWHCTXSIPHASH pContext);
+__inline void WHAPI WHInitSIPH24(PWHCTXSIPH24 pContext) {
+    static const SH_U64 key[2] = {0, 0};
+    siphash_init(&pContext->state, key);
+}
+__inline void WHAPI WHUpdateSIPH24(PWHCTXSIPH24 pContext, PCBYTE pbIn, UINT cbIn) {
+    siphash_update(&pContext->state, pbIn, cbIn);
+}
+__inline void WHAPI WHFinishSIPH24(PWHCTXSIPH24 pContext) {
+    pContext->hash = SwapV64(siphash_finalize(&pContext->state));
+}
+
+/**/
+
+typedef struct {
+    XXH64_state_t* state;
+    union {
+        XXH64_hash_t hash;
+        BYTE result[XXHASH_DIGEST_LENGTH];
+    };
+} WHCTXXXHASH, *PWHCTXXXHASH;
+
+
+__inline void WHAPI WHInitXXHASH(PWHCTXXXHASH pContext) {
+    static const UINT64 seed = 0;
+    pContext->state = XXH64_createState();
+    XXH_errorcode const resetResult = XXH64_reset(pContext->state, seed);
+}
+__inline void WHAPI WHUpdateXXHASH(PWHCTXXXHASH pContext, PCBYTE pbIn, UINT cbIn) {
+    XXH_errorcode const updateResult = XXH64_update(pContext->state, pbIn, cbIn);
+}
+__inline void WHAPI WHFinishXXHASH(PWHCTXXXHASH pContext) {
+    pContext->hash = SwapV64(XXH64_digest(pContext->state));
+    XXH64_freeState(pContext->state);
+}
 
 /**/
 
@@ -360,7 +402,8 @@ PTSTR WHAPI WHByteToHex( PBYTE pbSrc, PTSTR pszDest, UINT cchHex, UINT8 uCaseMod
 typedef struct {
     TCHAR szHexCRC32[CRC32_DIGEST_STRING_LENGTH];
     TCHAR szHexMD5[MD5_DIGEST_STRING_LENGTH];
-    TCHAR szHexSIPHASH[SIPHASH_DIGEST_STRING_LENGTH];
+    TCHAR szHexXXHASH[XXHASH_DIGEST_STRING_LENGTH];
+    TCHAR szHexSIPH24[SIPH24_DIGEST_STRING_LENGTH];
     TCHAR szHexSHA1[SHA1_DIGEST_STRING_LENGTH];
     TCHAR szHexSHA256[SHA256_DIGEST_STRING_LENGTH];
     TCHAR szHexSHA512[SHA512_DIGEST_STRING_LENGTH];
@@ -373,7 +416,8 @@ typedef struct {
 typedef struct {
 	__declspec(align(64)) WHCTXCRC32  ctxCRC32;
 	__declspec(align(64)) WHCTXMD5    ctxMD5;
-	__declspec(align(64)) WHCTXSIPHASH ctxSIPHASH;
+	__declspec(align(64)) WHCTXXXHASH ctxXXHASH;
+	__declspec(align(64)) WHCTXSIPH24 ctxSIPH24;
 	__declspec(align(64)) WHCTXSHA1   ctxSHA1;
 	__declspec(align(64)) WHCTXSHA256 ctxSHA256;
 	__declspec(align(64)) WHCTXSHA512 ctxSHA512;

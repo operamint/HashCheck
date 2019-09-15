@@ -128,6 +128,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <StringPooling>true</StringPooling>
       <OmitFramePointers>true</OmitFramePointers>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN64;__amd64__;NDEBUG;_WINDOWS;_UNICODE;UNICODE;BYTE_ORDER=LITTLE_ENDIAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -205,6 +206,7 @@
     <ClCompile Include="libs\SimpleString.c" />
     <ClCompile Include="libs\WinHash.cpp" />
     <ClCompile Include="libs\Wow64.c" />
+    <ClCompile Include="libs\xxhash\xxhash.c" />
     <ClCompile Include="RegHelpers.c" />
     <ClCompile Include="SetAppID.c" />
     <ClCompile Include="IsSSD.c" />
@@ -230,9 +232,12 @@
     <ClInclude Include="libs\SimpleList.h" />
     <ClInclude Include="libs\SimpleString.h" />
     <ClInclude Include="libs\BitwiseIntrinsics.h" />
+    <ClInclude Include="libs\siphash.h" />
     <ClInclude Include="libs\WinHash.h" />
     <ClInclude Include="libs\WinIntrinsics.h" />
     <ClInclude Include="libs\Wow64.h" />
+    <ClInclude Include="libs\xxhash\xxh3.h" />
+    <ClInclude Include="libs\xxhash\xxhash.h" />
     <ClInclude Include="RegHelpers.h" />
     <ClInclude Include="SetAppID.h" />
     <ClInclude Include="UnicodeHelpers.h" />
