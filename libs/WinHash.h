@@ -292,16 +292,16 @@ __inline void WHAPI WHFinishCRC32( PWHCTXCRC32 pContext )
 /**/
 
 typedef struct {
-    SipHashState state;
+    siphash_state state;
     union {
-        SH_U64 hash;
+        sip_uint64_t hash;
         BYTE result[SIPH24_DIGEST_LENGTH];
     };
 } WHCTXSIPH24, *PWHCTXSIPH24;
 
 
 __inline void WHAPI WHInitSIPH24(PWHCTXSIPH24 pContext) {
-    static const SH_U64 key[2] = {0, 0};
+    static const sip_uint64_t key[2] = {0, 0};
     siphash_init(&pContext->state, key);
 }
 __inline void WHAPI WHUpdateSIPH24(PWHCTXSIPH24 pContext, PCBYTE pbIn, UINT cbIn) {
