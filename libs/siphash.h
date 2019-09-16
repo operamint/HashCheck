@@ -18,12 +18,16 @@
 // Portable, very fast standalone ANSI C SipHash implementation.
 
 #include <string.h>
+#include <limits.h>
 
 typedef unsigned char      sip_uint8_t;
 typedef unsigned long long sip_uint64_t;
+typedef int sip_uint_size_check[ sizeof(sip_uint64_t) == 8 && CHAR_BIT == 8 ? 1 : -1 ];
 
 #ifdef _MSC_VER
     #define SIP_INLINE __forceinline
+#elif defined(__GNUC__)
+    #define SIP_INLINE __attribute__((always_inline)) inline
 #else
     #define SIP_INLINE inline
 #endif
