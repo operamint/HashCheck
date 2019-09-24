@@ -24,7 +24,7 @@ typedef unsigned char      sip_uint8_t;
 typedef unsigned long long sip_uint64_t;
 typedef int sip_uint_size_check[ sizeof(sip_uint64_t) == 8 && CHAR_BIT == 8 ? 1 : -1 ];
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
     #define SIP_INLINE __forceinline
 #elif defined(__GNUC__)
     #define SIP_INLINE __attribute__((always_inline)) inline
@@ -66,7 +66,7 @@ SIP_INLINE void siphash_init_c_d(siphash_state* s, const sip_uint64_t key[2], co
     s->v3 = key[1] ^ 0x7465646279746573;
 }
 
-// default
+// Default init 2-4
 SIP_INLINE void siphash_init(siphash_state* s, const sip_uint64_t key[2]) {
     siphash_init_c_d(s, key, 2, 4);
 }
@@ -74,18 +74,18 @@ SIP_INLINE void siphash_init13(siphash_state* s, const sip_uint64_t key[2]) {
     siphash_init_c_d(s, key, 1, 3);
 }
 
-#define _siphash_rotate_left64(bits, x)\
+#define _siphash_rotate_left64(x, bits)\
     ((x << bits) | (x >> (64 - bits)))
 
-#define _siphash_half_round(u, v, a, b, c, d)\
-    a += b;\
-    c += d;\
-    b = _siphash_rotate_left64(u, b) ^ a;\
-    d = _siphash_rotate_left64(v, d) ^ c;\
-    a = _siphash_rotate_left64(32, a);\
+#define _siphash_half_round(i, j, a, b, c, d)\
+    (a += b,\
+     c += d,\
+     b = _siphash_rotate_left64(b, i) ^ a,\
+     d = _siphash_rotate_left64(d, j) ^ c,\
+     a = _siphash_rotate_left64(a, 32))
 
 #define _siphash_compress(rounds, s)\
-    for (int i = 0; i < rounds; ++i) {\
+    for (int r = 0; r < rounds; ++r) {\
         _siphash_half_round(13, 16, s->v0, s->v1, s->v2, s->v3);\
         _siphash_half_round(17, 21, s->v2, s->v1, s->v0, s->v3);\
     }
@@ -149,11 +149,11 @@ SIP_INLINE sip_uint64_t siphash_hash_c_d(const sip_uint64_t key[2], const void* 
     return siphash_finalize(&state);
 }
 
-// default
-inline sip_uint64_t siphash_hash(const sip_uint64_t key[2], const void* bytes, const sip_uint64_t size) {
+// Default hash 2-4
+SIP_INLINE sip_uint64_t siphash_hash(const sip_uint64_t key[2], const void* bytes, const sip_uint64_t size) {
     return siphash_hash_c_d(key, bytes, size, 2, 4);
 }
-inline sip_uint64_t siphash_hash13(const sip_uint64_t key[2], const void* bytes, const sip_uint64_t size) {
+SIP_INLINE sip_uint64_t siphash_hash13(const sip_uint64_t key[2], const void* bytes, const sip_uint64_t size) {
     return siphash_hash_c_d(key, bytes, size, 1, 3);
 }
 
